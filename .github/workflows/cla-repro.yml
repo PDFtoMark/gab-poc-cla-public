@@ -1,0 +1,33 @@
+name: cla-repro
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  CLAAssistant:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Allowlist File
+        id: read_allowlist
+        run: |
+          printf 'alice,bob\n' > allowlist.txt
+          ALLOWLIST=$(cat allowlist.txt)
+          echo "allowlist=$ALLOWLIST" >> "$GITHUB_OUTPUT"
+      - name: Check if user is in allowlist
+        id: check_allowlist
+        run: |
+          PR_USER=${{ github.event.pull_request.user.login }}
+          echo "PR_USER=[$PR_USER]"
+          echo "ALLOWLIST=[${{ steps.read_allowlist.outputs.allowlist }}]"
+          if [[ "${{ steps.read_allowlist.outputs.allowlist }}" == *"$PR_USER"* ]]; then
+            echo "is_allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_allowed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Report
+        run: echo "is_allowed=${{ steps.check_allowlist.outputs.is_allowed }}"
+      - name: Simulated label step
+        if: ${{ steps.check_allowlist.outputs.is_allowed == 'true' }}
+        run: echo "would add cla allowlist label to issue ${{ github.event.issue.number }}"
